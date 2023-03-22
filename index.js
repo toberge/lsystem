@@ -42,7 +42,7 @@ const systems = {
     falloff: 0.95,
   },
   menger: {
-    name: "Menger Sponge",
+    name: "Koch curve",
     axiom: "F-F-F-F",
     rules: { F: "FF-F-F-F-FF" },
     angle: Math.PI / 2,
@@ -74,6 +74,7 @@ const draw = (path) => {
   for (const c of path) {
     switch (c) {
       case "F":
+      case "G":
         context.globalCompositeOperation = "destination-over";
         context.beginPath();
         context.moveTo(0, 0);
