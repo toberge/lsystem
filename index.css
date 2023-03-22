@@ -1,9 +1,50 @@
+/*
+Palette:
+#E8B50E
+#9C7702
+#1AA3E8
+#E85825
+#9C4121
+*/
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  font-family: "Pacifico", cursive;
+  color: #403101;
 }
 
 html {
-  background-color: #e8e4d5;
+  background-color: #fffaeb;
+}
+
+fieldset {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: 1em;
+  padding: 1em;
+  border-color: #e85825;
+  border-radius: 1.5em;
+  width: 18em;
+}
+
+.field {
+  display: flex;
+  justify-content: space-between;
+}
+
+input[type="text"],
+textarea {
+  font-family: "Nanum Gothic Coding", monospace;
+}
+
+input[type="text"] {
+  width: 10em;
+}
+
+textarea {
+  width: 100%;
+  min-height: 5em;
 }

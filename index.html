@@ -6,11 +6,54 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="description" content="L-system" />
     <link rel="stylesheet" href="./index.css" />
+    <!-- Font copypasta -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nanum+Gothic+Coding&family=Pacifico&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <canvas id="canvas" width="800" height="600"
       >Sooooorry please use newer browser, person</canvas
     >
     <script src="./index.js" defer></script>
+    <fieldset>
+      <legend>Settings</legend>
+      <div class="field">
+        <label for="preset">Preset</label>
+        <select name="presets" id="preset">
+          <option value="">Custom</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="length">Length</label>
+        <input id="length" type="range" min="1" max="100" />
+      </div>
+      <div class="field">
+        <label for="angle">Angle</label>
+        <input
+          id="angle"
+          type="range"
+          min="0"
+          max="1.57079632679"
+          step="0.04908738521"
+          value="0.52359877559"
+        />
+      </div>
+      <div class="field">
+        <label for="depth">Iterations</label>
+        <input id="depth" type="range" min="1" max="6" step="1" value="4" />
+      </div>
+      <div class="field">
+        <label for="axiom">Axiom</label>
+        <input id="axiom" type="text" />
+      </div>
+      <div>
+        <label for="rules">Rules</label>
+        <textarea id="rules">hello there</textarea>
+      </div>
+    </fieldset>
   </body>
 </html>
