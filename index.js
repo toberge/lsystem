@@ -151,6 +151,7 @@ const hookUpInput = (id, transform = (x) => x) => {
   });
 };
 hookUpInput("length", parseFloat);
+hookUpInput("falloff", parseFloat);
 hookUpInput("angle", parseFloat);
 hookUpInput("depth", parseInt);
 
