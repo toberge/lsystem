@@ -11,11 +11,12 @@ document.onresize = (e) => {
   canvas.height = e.height;
 };
 
-let config = {
+const defaultConfig = {
   length: 50,
   angle: Math.PI / 6,
   falloff: 0.9,
-  depth: 4,
+  iterations: 4,
+  animate: true,
 };
 
 const systems = {
@@ -36,7 +37,7 @@ const systems = {
       //F: "F[-F-F[-F+F]+F-F]+F+F[-F+F]+F-F",
       F: "FF[-F[+F$]][+F[-F$]][-F[-F$]]", // add [+F[+FX]] for symmetry
     },
-    depth: 3,
+    iterations: 3,
     angle: Math.PI / 6,
     length: 50,
     falloff: 0.95,
@@ -48,61 +49,68 @@ const systems = {
     angle: Math.PI / 2,
     falloff: 1,
     length: 4,
-    depth: 4,
+    iterations: 4,
+    animate: false,
   },
 };
 
-config = { ...config, ...systems["fork"] };
+let config = { ...defaultConfig, ...systems["fork"] };
+let animation = 0;
 
-const createSystem = (axiom, rules, depth = 5) => {
-  let system = axiom.split("");
-  for (let i = 0; i < depth; i++) {
-    system = system.flatMap((c) => (rules[c] ? rules[c].split("") : c));
+const evaluateSystem = (axiom, rules, iterations) => {
+  let path = axiom.split("");
+  for (let i = 0; i < iterations; i++) {
+    path = path.flatMap((c) => (rules[c] ? rules[c].split("") : c));
   }
-  return system.join("");
+  return path.join("");
 };
 
-const draw = (path) => {
+const draw = (path, time) => {
   context.strokeStyle = "#9C7702";
   context.fillStyle = "#1AA3E8BB";
   context.lineWidth = 3;
   context.resetTransform();
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.translate(canvas.width / 2, canvas.height);
-  let params = Object.assign({}, config);
-  const stack = [config];
+  let params = { length: config.length, depth: 0 };
+  const scaleByTime = (value) =>
+    Math.min(value, Math.sqrt((0.005 * time) / (params.depth + 1)) * value);
+  const stack = [];
   for (const c of path) {
+    const length = scaleByTime(params.length);
     switch (c) {
       case "F":
       case "G":
+        // Draw stems under petals
         context.globalCompositeOperation = "destination-over";
         context.beginPath();
         context.moveTo(0, 0);
-        context.lineTo(0, -params.length);
+        context.lineTo(0, -length);
         context.stroke();
-        context.translate(0, -params.length);
-        params.length *= config.falloff;
+        context.translate(0, -length);
         context.globalCompositeOperation = "source-over";
+        params.length *= config.falloff;
+        params.depth += 1;
         break;
       case "$":
-        context.translate(0, params.length / 2);
+        context.translate(0, length / 2);
         context.beginPath();
         context.arc(
           0,
           0,
-          params.length,
-          1.5 * Math.PI - params.angle,
-          1.5 * Math.PI + params.angle
+          scaleByTime(length),
+          1.5 * Math.PI - config.angle,
+          1.5 * Math.PI + config.angle
         );
         context.lineTo(0, 0);
         context.fill();
-        context.translate(0, -params.length / 2);
+        context.translate(0, -length / 2);
         break;
       case "+":
-        context.rotate(-params.angle);
+        context.rotate(-config.angle);
         break;
       case "-":
-        context.rotate(params.angle);
+        context.rotate(config.angle);
         break;
       case "[":
         context.save();
@@ -119,9 +127,24 @@ const draw = (path) => {
 };
 
 const refresh = () => {
-  requestAnimationFrame(() =>
-    draw(createSystem(config.axiom, config.rules, config.depth))
-  );
+  cancelAnimationFrame(animation);
+  const path = evaluateSystem(config.axiom, config.rules, config.iterations);
+  let time = 0;
+  let startTime = 0;
+  const redraw = (currentTime) => {
+    time += currentTime - startTime;
+    draw(path, time);
+    animation = requestAnimationFrame(redraw);
+  };
+  animation = requestAnimationFrame((currentTime) => {
+    startTime = currentTime;
+    if (config.iterations > 4 || !config.animate) {
+      draw(path, 1e9);
+    } else {
+      draw(path, time);
+      animation = requestAnimationFrame(redraw);
+    }
+  });
 };
 
 refresh();
@@ -133,9 +156,10 @@ Object.keys(systems).forEach((id) => {
   option.innerHTML = systems[id].name;
   presetSelect.appendChild(option);
 });
+presetSelect.value = "fork";
 presetSelect.addEventListener("change", (e) => {
   const system = systems[e.target.value] || systems.fork;
-  config = { ...config, ...system };
+  config = { ...defaultConfig, ...system };
   refresh();
 });
 
@@ -153,7 +177,20 @@ const hookUpInput = (id, transform = (x) => x) => {
 hookUpInput("length", parseFloat);
 hookUpInput("falloff", parseFloat);
 hookUpInput("angle", parseFloat);
-hookUpInput("depth", parseInt);
+hookUpInput("iterations", parseInt);
+
+const hookUpCheckbox = (id) => {
+  const checkbox = document.getElementById(id);
+  checkbox.checked = config[id];
+  checkbox.addEventListener("change", (e) => {
+    config[id] = e.target.checked;
+    refresh();
+  });
+  presetSelect.addEventListener("change", () => {
+    checkbox.checked = config[id];
+  });
+};
+hookUpCheckbox("animate");
 
 const axiomInput = document.getElementById("axiom");
 axiomInput.value = config.axiom;

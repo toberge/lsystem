@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>L-system</title>
+    <title>Lindenmayer system</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="description" content="L-system" />
     <link rel="stylesheet" href="./index.css" />
@@ -23,9 +23,7 @@
       <legend>Settings</legend>
       <div class="field">
         <label for="preset">Preset</label>
-        <select name="presets" id="preset">
-          <option value="">Custom</option>
-        </select>
+        <select name="presets" id="preset"></select>
       </div>
       <div class="field">
         <label for="length">Length</label>
@@ -46,8 +44,12 @@
         />
       </div>
       <div class="field">
-        <label for="depth">Iterations</label>
-        <input id="depth" type="range" min="1" max="6" step="1" />
+        <label for="iterations">Iterations</label>
+        <input id="iterations" type="range" min="1" max="6" step="1" />
+      </div>
+      <div class="field">
+        <label for="animate">Animate</label>
+        <input id="animate" type="checkbox" value="true" />
       </div>
       <div class="field">
         <label for="axiom">Axiom</label>
