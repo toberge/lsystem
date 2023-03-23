@@ -5,11 +5,6 @@ const context = canvas.getContext("2d");
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
-// TODO fix resizing
-document.onresize = (e) => {
-  canvas.width = e.width;
-  canvas.height = e.height;
-};
 
 const defaultConfig = {
   length: 50,
@@ -148,6 +143,24 @@ const refresh = () => {
 };
 
 refresh();
+
+const debounce = (callback, timeout = 200) => {
+  let timer;
+  return () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      callback();
+    }, timeout);
+  };
+};
+window.addEventListener(
+  "resize",
+  debounce(() => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    refresh();
+  })
+);
 
 const presetSelect = document.getElementById("preset");
 Object.keys(systems).forEach((id) => {

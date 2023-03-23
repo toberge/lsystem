@@ -19,6 +19,11 @@ html {
   background-color: #fffaeb;
 }
 
+body {
+  /* TODO implement a better solution for the tiny gap below the canvas */
+  overflow: hidden;
+}
+
 fieldset {
   position: absolute;
   left: 0;
@@ -56,6 +61,7 @@ dt {
   float: left;
   clear: left;
 }
+
 dd {
   float: right;
 }
