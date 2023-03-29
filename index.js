@@ -15,16 +15,6 @@ const defaultConfig = {
 };
 
 const systems = {
-  bush: {
-    name: "Bush",
-    axiom: "F",
-    rules: {
-      F: "FF-[-F+F+F]+[+F-F-F$]",
-    },
-    angle: (22.5 / 180) * Math.PI,
-    falloff: 1,
-    length: 16,
-  },
   fork: {
     name: "Fork",
     axiom: "F",
@@ -37,15 +27,51 @@ const systems = {
     length: 50,
     falloff: 0.95,
   },
-  menger: {
-    name: "Koch curve",
-    axiom: "F-F-F-F",
-    rules: { F: "FF-F-F-F-FF" },
-    angle: Math.PI / 2,
+  bush: {
+    name: "Bush",
+    axiom: "F",
+    rules: {
+      F: "FF-[-F+F+F]+[+F-F-F$]",
+    },
+    angle: (22.5 / 180) * Math.PI,
     falloff: 1,
-    length: 4,
-    iterations: 4,
-    animate: false,
+    length: 16,
+  },
+  fuzzy: {
+    name: "Fuzzy",
+    axiom: "F",
+    rules: { F: "F[+F]F[-F][F]" },
+    angle: Math.PI / 9,
+    falloff: 1,
+    iterations: 5,
+    length: 14,
+  },
+  long: {
+    name: "Long",
+    axiom: "X",
+    rules: { X: "F[+X]F[-X]+X", F: "FF" },
+    angle: Math.PI / 9,
+    falloff: 1,
+    iterations: 6,
+    length: 6,
+  },
+  symmetric: {
+    name: "Symmetric",
+    axiom: "X",
+    rules: { X: "F[+X][-X]FX$", F: "FF" },
+    angle: Math.PI / 7,
+    falloff: 1,
+    iterations: 6,
+    length: 6,
+  },
+  swaying: {
+    name: "Swaying",
+    axiom: "X",
+    rules: { X: "F-[[X]+X]+F[+FX]-X", F: "FF" },
+    angle: Math.PI / 8,
+    falloff: 1,
+    iterations: 5,
+    length: 10,
   },
 };
 
@@ -133,7 +159,7 @@ const refresh = () => {
   };
   animation = requestAnimationFrame((currentTime) => {
     startTime = currentTime;
-    if (config.iterations > 4 || !config.animate) {
+    if (config.iterations > 6 || !config.animate) {
       draw(path, 1e9);
     } else {
       draw(path, time);
