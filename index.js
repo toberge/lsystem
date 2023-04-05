@@ -177,11 +177,16 @@ const timeout = (duration, { signal }) => new Promise((resolve, reject) => {
 
 createSynth = () => {
   const context = new window.AudioContext();
-  const oscillator = context.createOscillator();
+  const oscillators = [context.createOscillator(), context.createOscillator()];
   const gain = context.createGain();
   gain.connect(context.destination);
 
-  oscillator.start(context.currentTime);
+  oscillators[0].type = "sawtooth";
+  oscillators[0].detune.value = -10;
+  oscillators[1].type = "triangle";
+  oscillators[0].detune.value = 10;
+
+  oscillators.forEach((o) => o.start(context.currentTime));
 
   const base = 440;
   const factor = Math.pow(2, 1/12);
@@ -191,7 +196,7 @@ createSynth = () => {
     if (context.state === 'suspended') {
 		context.resume();
 	}
-    oscillator.frequency.value = frequency;
+    oscillators.forEach((o) => o.frequency.value = frequency);
     await timeout(duration, { signal });
   };
 
@@ -214,12 +219,11 @@ createSynth = () => {
   };
 
   const playSequence =  async (sequence, { signal }) => {
-    oscillator.disconnect();
-    oscillator.connect(gain);
+    oscillators.forEach((o) => o.connect(gain));
     for (const [frequency, duration] of sequence) {
       await playTone(frequency, duration, { signal });
     }
-    oscillator.disconnect(gain);
+    oscillators.forEach((o) => o.disconnect(gain));
   };
 
   let abortController = null;
@@ -228,7 +232,7 @@ createSynth = () => {
     play: (path, scale="pentatonic", duration=100) => {
       if (abortController) {
         abortController.abort();
-        oscillator.frequency.value = base;
+        oscillators.forEach((o) => o.disconnect(gain));
       }
 
       const tone = scales[scale];
