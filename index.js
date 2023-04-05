@@ -184,20 +184,20 @@ createSynth = () => {
   oscillators[0].type = "sawtooth";
   oscillators[0].detune.value = -10;
   oscillators[1].type = "triangle";
-  oscillators[0].detune.value = 10;
+  oscillators[1].detune.value = 10;
 
   oscillators.forEach((o) => o.start(context.currentTime));
 
   const base = 440;
-  const factor = Math.pow(2, 1/12);
 
   const playTone = async (frequency, duration, { signal }) => {
-    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
     if (context.state === 'suspended') {
 		context.resume();
 	}
     oscillators.forEach((o) => o.frequency.value = frequency);
+    gain.gain.exponentialRampToValueAtTime(0.00001, context.currentTime + duration * .9);
     await timeout(duration, { signal });
+    gain.gain.value = 1;
   };
 
   const createScale = (intervals) => {
@@ -208,7 +208,7 @@ createSynth = () => {
     return (i) => {
       // Omg js why are you like this
       const offset = intervals[(i % n + n) % n] + Math.floor(i / n) * octave;
-      return base * Math.pow(factor, offset >= 0 ? offset : 1 / Math.abs(offset));
+      return base * Math.pow(2, offset / 12);
     }
   }
 
@@ -223,7 +223,7 @@ createSynth = () => {
     for (const [frequency, duration] of sequence) {
       await playTone(frequency, duration, { signal });
     }
-    oscillators.forEach((o) => o.disconnect(gain));
+    oscillators.forEach((o) => o.disconnect());
   };
 
   let abortController = null;
@@ -232,7 +232,7 @@ createSynth = () => {
     play: (path, scale="pentatonic", duration=100) => {
       if (abortController) {
         abortController.abort();
-        oscillators.forEach((o) => o.disconnect(gain));
+        oscillators.forEach((o) => o.disconnect());
       }
 
       const tone = scales[scale];
