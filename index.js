@@ -12,6 +12,8 @@ const defaultConfig = {
   falloff: 0.9,
   iterations: 4,
   animate: true,
+  scale: "pentatonic",
+  duration: 120,
 };
 
 const systems = {
@@ -28,7 +30,7 @@ const systems = {
     falloff: 0.95,
   },
   bush: {
-    name: "Bush",
+    name: "Edge-rewriting 1",
     axiom: "F",
     rules: {
       F: "FF-[-F+F+F]+[+F-F-F$]",
@@ -38,7 +40,7 @@ const systems = {
     length: 16,
   },
   fuzzy: {
-    name: "Fuzzy",
+    name: "Edge-rewriting 2",
     axiom: "F",
     rules: { F: "F[+F]F[-F][F]" },
     angle: Math.PI / 9,
@@ -47,7 +49,7 @@ const systems = {
     length: 14,
   },
   long: {
-    name: "Long",
+    name: "Node-rewriting 1",
     axiom: "X",
     rules: { X: "F[+X]F[-X]+X", F: "FF" },
     angle: Math.PI / 9,
@@ -56,22 +58,43 @@ const systems = {
     length: 6,
   },
   symmetric: {
-    name: "Symmetric",
+    name: "Node-rewriting 2",
     axiom: "X",
     rules: { X: "F[+X][-X]FX$", F: "FF" },
     angle: Math.PI / 7,
     falloff: 1,
     iterations: 6,
     length: 6,
+    duration: 80,
   },
   swaying: {
-    name: "Swaying",
+    name: "Node-rewriting 3",
     axiom: "X",
     rules: { X: "F-[[X]+X]+F[+FX]-X", F: "FF" },
     angle: Math.PI / 8,
     falloff: 1,
     iterations: 5,
     length: 10,
+  },
+  melody1: {
+    name: "Melody 1",
+    axiom: "GGF",
+    rules: { F: "F+G[---G]+G[---G$]" },
+    angle: Math.PI / 6,
+    falloff: .95,
+    iterations: 6,
+    length: 50,
+    scale: "pentatonic"
+  },
+  melody2: {
+    name: "Melody 2",
+    axiom: "GGF",
+    rules: { F: "F+G+G+G[--G+F]" },
+    angle: Math.PI / 6,
+    falloff: .8,
+    iterations: 3,
+    length: 50,
+    scale: "minor"
   },
 };
 
@@ -147,7 +170,10 @@ const draw = (path, time) => {
   }
 };
 
-const timeout = (duration) => new Promise(resolve => setTimeout(resolve, duration));
+const timeout = (duration, { signal }) => new Promise((resolve, reject) => {
+  if (signal?.aborted) reject(new DOMException("Aborted", "AbortError"));
+  else setTimeout(resolve, duration);
+});
 
 createSynth = () => {
   const context = new window.AudioContext();
@@ -160,19 +186,38 @@ createSynth = () => {
   const base = 440;
   const factor = Math.pow(2, 1/12);
 
-  const playTone = async (frequency=440, duration=500) => {
+  const playTone = async (frequency, duration, { signal }) => {
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
     if (context.state === 'suspended') {
 		context.resume();
 	}
     oscillator.frequency.value = frequency;
-    await timeout(duration);
+    await timeout(duration, { signal });
   };
 
-  const playSequence =  async (sequence) => {
+  const createScale = (intervals) => {
+    intervals = intervals.reduce(((acc, val) => [...acc, acc[acc.length - 1] + val]), [0])
+    const octave = intervals[intervals.length - 1]
+    intervals = intervals.slice(0, intervals.length - 1);
+    const n = intervals.length;
+    return (i) => {
+      // Omg js why are you like this
+      const offset = intervals[(i % n + n) % n] + Math.floor(i / n) * octave;
+      return base * Math.pow(factor, offset >= 0 ? offset : 1 / Math.abs(offset));
+    }
+  }
+
+  const scales = {
+    pentatonic: createScale([2, 2, 3, 2, 3]),
+    major: createScale([2, 2, 1, 2, 2, 2, 1]),
+    minor: createScale([2, 1, 2, 2, 1, 2, 2]),
+  };
+
+  const playSequence =  async (sequence, { signal }) => {
     oscillator.disconnect();
     oscillator.connect(gain);
     for (const [frequency, duration] of sequence) {
-      await playTone(frequency, duration);
+      await playTone(frequency, duration, { signal });
     }
     oscillator.disconnect(gain);
   };
@@ -180,37 +225,36 @@ createSynth = () => {
   let abortController = null;
 
   return {
-    play: (path) => {
+    play: (path, scale="pentatonic", duration=100) => {
       if (abortController) {
         abortController.abort();
         oscillator.frequency.value = base;
       }
 
+      const tone = scales[scale];
       sequence = [];
-      let tone = 440;
-      stack = [tone];
+      let toneIndex = 0;
+      stack = [toneIndex];
       for (const c of path) {
         switch (c) {
           case "F":
           case "G":
-            sequence.push([tone, 100])
+            sequence.push([tone(toneIndex), duration])
             break;
           case "$":
-            // TODO flourish?
-            sequence.push([tone * factor * factor, 50])
-            sequence.push([tone * factor * factor, tone * factor * factor * factor, 50])
+            // TODO flourish parameter?
             break;
           case "+":
-            tone *= factor;
+            toneIndex++;
             break;
           case "-":
-            tone /= factor;
+            toneIndex--;
             break;
           case "[":
-            stack.push(tone);
+            stack.push(toneIndex);
             break;
           case "]":
-            tone = stack.pop();
+            toneIndex = stack.pop();
             break;
           default:
             break;
@@ -218,7 +262,9 @@ createSynth = () => {
       }
 
       abortController = new AbortController();
-      playSequence(sequence, abortController.signal);
+      try {
+        playSequence(sequence, { signal: abortController.signal });
+      } catch(e) {}
     }
   }
 }
@@ -235,7 +281,7 @@ const refresh = () => {
     draw(path, time);
     animation = requestAnimationFrame(redraw);
   };
-  synth.play(path);
+  synth.play(path, config.scale, config.duration);
   animation = requestAnimationFrame((currentTime) => {
     startTime = currentTime;
     if (config.iterations > 6 || !config.animate) {
