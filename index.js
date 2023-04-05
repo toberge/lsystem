@@ -147,6 +147,84 @@ const draw = (path, time) => {
   }
 };
 
+const timeout = (duration) => new Promise(resolve => setTimeout(resolve, duration));
+
+createSynth = () => {
+  const context = new window.AudioContext();
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  gain.connect(context.destination);
+
+  oscillator.start(context.currentTime);
+
+  const base = 440;
+  const factor = Math.pow(2, 1/12);
+
+  const playTone = async (frequency=440, duration=500) => {
+    if (context.state === 'suspended') {
+		context.resume();
+	}
+    oscillator.frequency.value = frequency;
+    await timeout(duration);
+  };
+
+  const playSequence =  async (sequence) => {
+    oscillator.disconnect();
+    oscillator.connect(gain);
+    for (const [frequency, duration] of sequence) {
+      await playTone(frequency, duration);
+    }
+    oscillator.disconnect(gain);
+  };
+
+  let abortController = null;
+
+  return {
+    play: (path) => {
+      if (abortController) {
+        abortController.abort();
+        oscillator.frequency.value = base;
+      }
+
+      sequence = [];
+      let tone = 440;
+      stack = [tone];
+      for (const c of path) {
+        switch (c) {
+          case "F":
+          case "G":
+            sequence.push([tone, 100])
+            break;
+          case "$":
+            // TODO flourish?
+            sequence.push([tone * factor * factor, 50])
+            sequence.push([tone * factor * factor, tone * factor * factor * factor, 50])
+            break;
+          case "+":
+            tone *= factor;
+            break;
+          case "-":
+            tone /= factor;
+            break;
+          case "[":
+            stack.push(tone);
+            break;
+          case "]":
+            tone = stack.pop();
+            break;
+          default:
+            break;
+        }
+      }
+
+      abortController = new AbortController();
+      playSequence(sequence, abortController.signal);
+    }
+  }
+}
+
+const synth = createSynth();
+
 const refresh = () => {
   cancelAnimationFrame(animation);
   const path = evaluateSystem(config.axiom, config.rules, config.iterations);
@@ -157,6 +235,7 @@ const refresh = () => {
     draw(path, time);
     animation = requestAnimationFrame(redraw);
   };
+  synth.play(path);
   animation = requestAnimationFrame((currentTime) => {
     startTime = currentTime;
     if (config.iterations > 6 || !config.animate) {
