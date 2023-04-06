@@ -18,6 +18,7 @@ const defaultConfig = {
 const toggles = {
   animate: true,
   play: true,
+  hasClicked: false,
 }
 
 const systems = {
@@ -201,6 +202,10 @@ createSynth = () => {
 
   return {
     play: (path, scale="pentatonic", duration=.1) => {
+      if (!toggles.hasClicked) {
+        // Can't play sound until user has clicked on something
+        return;
+      }
       if (abortController) {
         abortController.abort();
       }
@@ -367,6 +372,14 @@ const refresh = () => {
 };
 
 refresh();
+
+document.addEventListener("click", () => {
+  // Can't play audio until after the user has clicked once
+  if (!toggles.hasClicked) {
+    toggles.hasClicked = true;
+    refresh()
+  }
+});
 
 const debounce = (callback, timeout = 200) => {
   let timer;
