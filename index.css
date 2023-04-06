@@ -67,6 +67,7 @@ textarea {
 }
 
 dt {
+  font-weight: bold;
   float: left;
   clear: left;
 }

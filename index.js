@@ -88,16 +88,16 @@ const systems = {
     angle: Math.PI / 12,
     falloff: .9,
     iterations: 6,
-    length: 50,
+    length: 80,
     scale: "pentatonic"
   },
   melody2: {
     name: "Melody 2",
     axiom: "GGF",
     rules: { F: "F+G+G+G[--G+F]" },
-    angle: Math.PI / 6,
-    falloff: .8,
-    iterations: 3,
+    angle: Math.PI / 36,
+    falloff: .93,
+    iterations: 4,
     length: 50,
     scale: "minor"
   },
@@ -136,7 +136,6 @@ const scales = {
   minor: createScale([2, 1, 2, 2, 1, 2, 2]),
   pentatonic: createScale([2, 2, 3, 2, 3]),
   tetratonic: createScale([3, 2, 2, 1, 4]),
-  japanese: createScale([2, 1, 4, 1, 4]),
   "major thirds": createScale([4, 4, 4]),
   "minor thirds": createScale([3, 3, 3, 3]),
   "whole-tone": createScale([2, 2, 2, 2, 2, 2]),
