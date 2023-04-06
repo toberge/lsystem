@@ -15,7 +15,7 @@ Palette:
   color: #403101;
 }
 
-html {
+html, fieldset {
   background-color: #fffaeb;
 }
 
@@ -33,6 +33,13 @@ fieldset {
   border-color: #9c4121;
   border-radius: 1.5em;
   width: 18em;
+  max-height: 600px;
+  transition: max-height 200ms ease-in;
+  overflow: hidden;
+}
+
+legend {
+  cursor: pointer;
 }
 
 .field {

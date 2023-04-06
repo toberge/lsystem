@@ -338,6 +338,14 @@ window.addEventListener(
   })
 );
 
+const fieldset = document.getElementsByTagName("fieldset")[0]
+const legend = document.getElementsByTagName("legend")[0]
+legend.addEventListener("click", () => {
+  const collapsed = fieldset.style.maxHeight === "0px";
+  fieldset.style.maxHeight = collapsed ? "600px" : "0px";
+  legend.innerText = collapsed ? "Settings ^" : "Settings v "
+})
+
 const presetSelect = document.getElementById("preset");
 Object.keys(systems).forEach((id) => {
   const option = document.createElement("option");
