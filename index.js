@@ -13,7 +13,7 @@ const defaultConfig = {
   iterations: 4,
   animate: true,
   scale: "pentatonic",
-  duration: 120,
+  duration: 0.12,
 };
 
 const systems = {
@@ -65,7 +65,7 @@ const systems = {
     falloff: 1,
     iterations: 6,
     length: 6,
-    duration: 80,
+    duration: 0.09,
   },
   swaying: {
     name: "Node-rewriting 3",
@@ -80,8 +80,8 @@ const systems = {
     name: "Melody 1",
     axiom: "GGF",
     rules: { F: "F+G[---G]+G[---G$]" },
-    angle: Math.PI / 6,
-    falloff: .95,
+    angle: Math.PI / 12,
+    falloff: .9,
     iterations: 6,
     length: 50,
     scale: "pentatonic"
@@ -177,27 +177,41 @@ const timeout = (duration, { signal }) => new Promise((resolve, reject) => {
 
 createSynth = () => {
   const context = new window.AudioContext();
-  const oscillators = [context.createOscillator(), context.createOscillator()];
-  const gain = context.createGain();
-  gain.connect(context.destination);
-
-  oscillators[0].type = "sawtooth";
-  oscillators[0].detune.value = -10;
-  oscillators[1].type = "triangle";
-  oscillators[1].detune.value = 10;
-
-  oscillators.forEach((o) => o.start(context.currentTime));
-
+  const output = context.createGain();
+  output.connect(context.destination);
+  output.gain.value = 0.5;
   const base = 440;
 
   const playTone = async (frequency, duration, { signal }) => {
-    if (context.state === 'suspended') {
-		context.resume();
-	}
+    // Basic setup
+    const oscillators = [context.createOscillator(), context.createOscillator()];
+    const gain = context.createGain();
+    oscillators.forEach((o) => o.connect(gain));
+    gain.connect(output);
+
+    // Sound
+    oscillators[0].type = "sawtooth";
+    oscillators[0].detune.value = -10;
+    oscillators[1].type = "triangle";
+    oscillators[1].detune.value = 10;
+
     oscillators.forEach((o) => o.frequency.value = frequency);
-    gain.gain.exponentialRampToValueAtTime(0.00001, context.currentTime + duration * .9);
-    await timeout(duration, { signal });
-    gain.gain.value = 1;
+
+    // Envelope
+    gain.gain.setValueAtTime(0, context.currentTime);
+    gain.gain.linearRampToValueAtTime(1, context.currentTime + .01);
+    gain.gain.setValueAtTime(1, context.currentTime + duration - .02);
+    gain.gain.exponentialRampToValueAtTime(0.00001, context.currentTime + duration);
+
+    // Start and stop
+    oscillators.forEach((o) => o.start(context.currentTime));
+    oscillators.forEach((o) => o.stop(context.currentTime + duration));
+    oscillators[0].onended = () => gain.disconnect();
+    try {
+      await timeout(duration * 1000, { signal });
+    } catch (e) {
+      gain.disconnect();
+    }
   };
 
   const createScale = (intervals) => {
@@ -219,31 +233,33 @@ createSynth = () => {
   };
 
   const playSequence =  async (sequence, { signal }) => {
-    oscillators.forEach((o) => o.connect(gain));
     for (const [frequency, duration] of sequence) {
       await playTone(frequency, duration, { signal });
     }
-    oscillators.forEach((o) => o.disconnect());
   };
 
   let abortController = null;
 
   return {
-    play: (path, scale="pentatonic", duration=100) => {
+    play: (path, scale="pentatonic", duration=.1) => {
       if (abortController) {
         abortController.abort();
-        oscillators.forEach((o) => o.disconnect());
       }
 
       const tone = scales[scale];
       sequence = [];
       let toneIndex = 0;
+      let toneLength = 0;
       stack = [toneIndex];
       for (const c of path) {
+        if (c !== "F" && c !== "G" && toneLength > 0) {
+            sequence.push([tone(toneIndex), toneLength * duration])
+            toneLength = 0;
+        }
         switch (c) {
           case "F":
           case "G":
-            sequence.push([tone(toneIndex), duration])
+            toneLength++;
             break;
           case "$":
             // TODO flourish parameter?
@@ -269,6 +285,11 @@ createSynth = () => {
       try {
         playSequence(sequence, { signal: abortController.signal });
       } catch(e) {}
+    },
+    stop: () => {
+      if (abortController) {
+        abortController.abort();
+      }
     }
   }
 }
