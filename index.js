@@ -60,6 +60,7 @@ const systems = {
     falloff: 1,
     iterations: 6,
     length: 6,
+    duration: 0.09
   },
   symmetric: {
     name: "Node-rewriting 2",
@@ -111,67 +112,6 @@ const evaluateSystem = (axiom, rules, iterations) => {
     path = path.flatMap((c) => (rules[c] ? rules[c].split("") : c));
   }
   return path.join("");
-};
-
-const draw = (path, time) => {
-  context.strokeStyle = "#9C7702";
-  context.fillStyle = "#1AA3E8BB";
-  context.lineWidth = 3;
-  context.resetTransform();
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  context.translate(canvas.width / 2, canvas.height);
-  let params = { length: config.length, depth: 0 };
-  const scaleByTime = (value) =>
-    Math.min(value, Math.sqrt((0.005 * time) / (params.depth + 1)) * value);
-  const stack = [];
-  for (const c of path) {
-    const length = scaleByTime(params.length);
-    switch (c) {
-      case "F":
-      case "G":
-        // Draw stems under petals
-        context.globalCompositeOperation = "destination-over";
-        context.beginPath();
-        context.moveTo(0, 0);
-        context.lineTo(0, -length);
-        context.stroke();
-        context.translate(0, -length);
-        context.globalCompositeOperation = "source-over";
-        params.length *= config.falloff;
-        params.depth += 1;
-        break;
-      case "$":
-        context.translate(0, length / 2);
-        context.beginPath();
-        context.arc(
-          0,
-          0,
-          scaleByTime(length),
-          1.5 * Math.PI - config.angle,
-          1.5 * Math.PI + config.angle
-        );
-        context.lineTo(0, 0);
-        context.fill();
-        context.translate(0, -length / 2);
-        break;
-      case "+":
-        context.rotate(-config.angle);
-        break;
-      case "-":
-        context.rotate(config.angle);
-        break;
-      case "[":
-        context.save();
-        stack.push(Object.assign({}, params));
-        break;
-      case "]":
-        context.restore();
-        params = stack.pop();
-        break;
-      default:
-        break;
-    }
-  }
 };
 
 const timeout = (duration, { signal }) => new Promise((resolve, reject) => {
@@ -238,13 +178,24 @@ createSynth = () => {
       await timeout(duration * 1000, { signal });
     } catch (e) {
       gain.disconnect();
+      throw e;
     }
   };
 
+  const indicator = {
+    start: 0,
+    end: 0,
+  };
+
   const playSequence =  async (sequence, { signal }) => {
-    for (const [frequency, duration] of sequence) {
-      await playTone(frequency, duration, { signal });
-    }
+    try {
+      for (const [frequency, duration, interval] of sequence) {
+        if (signal?.aborted) break;
+        indicator.start = interval[0];
+        indicator.end = interval[1];
+        await playTone(frequency, duration, { signal });
+      }
+    } catch (e) {}
   };
 
   let abortController = null;
@@ -259,11 +210,14 @@ createSynth = () => {
       sequence = [];
       let toneIndex = 0;
       let toneLength = 0;
+      let startIndex = 0;
       stack = [toneIndex];
-      for (const c of path) {
+      for (let i = 0; i < path.length; i++) {
+        const c = path[i];
         if (c !== "F" && c !== "G" && toneLength > 0) {
-            sequence.push([tone(toneIndex), toneLength * duration])
+            sequence.push([tone(toneIndex), toneLength * duration, [startIndex, i]])
             toneLength = 0;
+            startIndex = i;
         }
         switch (c) {
           case "F":
@@ -289,6 +243,9 @@ createSynth = () => {
             break;
         }
       }
+      if (toneLength > 0) {
+          sequence.push([tone(toneIndex), toneLength * duration, [startIndex, path.length - 1]])
+      }
 
       abortController = new AbortController();
       try {
@@ -303,10 +260,86 @@ createSynth = () => {
     setVolume: (volume) => {
       output.gain.value = volume;
     },
+    indicator,
   }
 }
 
 const synth = createSynth();
+
+const draw = (path, time) => {
+  context.strokeStyle = "#9C7702";
+  context.fillStyle = "#1AA3E8BB";
+  context.lineWidth = 3;
+  context.resetTransform();
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.translate(canvas.width / 2, canvas.height);
+  let params = { length: config.length, depth: 0 };
+  const scaleByTime = (value) =>
+    Math.min(value, Math.sqrt((0.005 * time) / (params.depth + 1)) * value);
+  const stack = [];
+  for (let i = 0; i < path.length; i++) {
+    const c = path[i];
+    const length = scaleByTime(params.length);
+    switch (c) {
+      case "F":
+      case "G":
+        // Indicate where we're playing a tone from
+        const isIndicator = toggles.animate && synth.indicator.start <= i && i <= synth.indicator.end;
+        if (isIndicator) {
+          context.strokeStyle = "#E85825";
+          context.lineWidth = 5;
+        } else {
+          context.strokeStyle = "#9C7702";
+          context.lineWidth = 3;
+        }
+        // Draw stems under petals
+        if (!isIndicator) {
+          context.globalCompositeOperation = "destination-over";
+        }
+        context.beginPath();
+        context.moveTo(0, 0);
+        context.lineTo(0, -length);
+        context.stroke();
+        context.translate(0, -length);
+        if (!isIndicator) {
+          context.globalCompositeOperation = "source-over";
+        }
+        params.length *= config.falloff;
+        params.depth += 1;
+        break;
+      case "$":
+        context.translate(0, length / 2);
+        context.beginPath();
+        context.arc(
+          0,
+          0,
+          scaleByTime(length),
+          1.5 * Math.PI - config.angle,
+          1.5 * Math.PI + config.angle
+        );
+        context.lineTo(0, 0);
+        context.fill();
+        context.translate(0, -length / 2);
+        break;
+      case "+":
+        context.rotate(-config.angle);
+        break;
+      case "-":
+        context.rotate(config.angle);
+        break;
+      case "[":
+        context.save();
+        stack.push(Object.assign({}, params));
+        break;
+      case "]":
+        context.restore();
+        params = stack.pop();
+        break;
+      default:
+        break;
+    }
+  }
+};
 
 const refresh = () => {
   cancelAnimationFrame(animation);
