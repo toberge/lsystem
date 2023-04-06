@@ -53,6 +53,8 @@ textarea {
   font-family: "Nanum Gothic Coding", monospace;
   font-weight: bold;
   font-size: 1em;
+  border-color: #403101;
+  border-radius: .2em;
 }
 
 input[type="text"] {

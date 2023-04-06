@@ -459,7 +459,7 @@ const setRules = (input) => {
     rulesInput.style.setProperty("border-color", "#E85825");
   } else {
     config.rules = result;
-    rulesInput.style.setProperty("border-color", "transparent");
+    rulesInput.style.setProperty("border-color", "#403101");
     refresh();
   }
 };
