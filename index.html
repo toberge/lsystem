@@ -25,13 +25,14 @@
         <label for="preset">Preset</label>
         <select name="presets" id="preset"></select>
       </div>
+      <h2>Plant</h2>
       <div class="field">
         <label for="length">Length</label>
         <input id="length" type="range" min="1" max="100" />
       </div>
       <div class="field">
         <label for="falloff">Falloff</label>
-        <input id="falloff" type="range" min="0" max="1" step="0.01" />
+        <input id="falloff" type="range" min="0.5" max="1" step="0.01" />
       </div>
       <div class="field">
         <label for="angle">Angle</label>
@@ -44,12 +45,30 @@
         />
       </div>
       <div class="field">
-        <label for="iterations">Iterations</label>
-        <input id="iterations" type="range" min="1" max="6" step="1" />
-      </div>
-      <div class="field">
         <label for="animate">Animate</label>
         <input id="animate" type="checkbox" value="true" />
+      </div>
+      <h2>Music</h2>
+      <div class="field">
+        <label for="scale">Scale</label>
+        <select name="scale" id="scale"></select>
+      </div>
+      <div class="field">
+        <label for="duration">Tone length</label>
+        <input id="duration" type="range" min="0.08" max="0.6" step="0.01" />
+      </div>
+      <div class="field">
+        <label for="volume">Volume</label>
+        <input id="volume" type="range" value="0.1" min="0" max="0.1" step="0.002" />
+      </div>
+      <div class="field">
+        <label for="play">Play</label>
+        <input id="play" type="checkbox" value="true" checked />
+      </div>
+      <h2>L-system</h2>
+      <div class="field">
+        <label for="iterations">Iterations</label>
+        <input id="iterations" type="range" min="1" max="6" step="1" />
       </div>
       <div class="field">
         <label for="axiom">Axiom</label>

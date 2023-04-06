@@ -11,10 +11,14 @@ const defaultConfig = {
   angle: Math.PI / 6,
   falloff: 0.9,
   iterations: 4,
-  animate: true,
   scale: "pentatonic",
   duration: 0.12,
 };
+
+const toggles = {
+  animate: true,
+  play: true,
+}
 
 const systems = {
   fork: {
@@ -175,12 +179,35 @@ const timeout = (duration, { signal }) => new Promise((resolve, reject) => {
   else setTimeout(resolve, duration);
 });
 
+const createScale = (intervals) => {
+  intervals = intervals.reduce(((acc, val) => [...acc, acc[acc.length - 1] + val]), [0])
+  const octave = intervals[intervals.length - 1]
+  intervals = intervals.slice(0, intervals.length - 1);
+  const n = intervals.length;
+  return (i) => {
+    // Omg js why are you like this
+    const offset = intervals[(i % n + n) % n] + Math.floor(i / n) * octave;
+    return 440 * Math.pow(2, offset / 12);
+  }
+}
+
+const scales = {
+  major: createScale([2, 2, 1, 2, 2, 2, 1]),
+  minor: createScale([2, 1, 2, 2, 1, 2, 2]),
+  pentatonic: createScale([2, 2, 3, 2, 3]),
+  tetratonic: createScale([3, 2, 2, 1, 4]),
+  japanese: createScale([2, 1, 4, 1, 4]),
+  "major thirds": createScale([4, 4, 4]),
+  "minor thirds": createScale([3, 3, 3, 3]),
+  "whole-tone": createScale([2, 2, 2, 2, 2, 2]),
+  chromatic: createScale([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+};
+
 createSynth = () => {
   const context = new window.AudioContext();
   const output = context.createGain();
   output.connect(context.destination);
-  output.gain.value = 0.5;
-  const base = 440;
+  output.gain.value = 0.1;
 
   const playTone = async (frequency, duration, { signal }) => {
     // Basic setup
@@ -212,24 +239,6 @@ createSynth = () => {
     } catch (e) {
       gain.disconnect();
     }
-  };
-
-  const createScale = (intervals) => {
-    intervals = intervals.reduce(((acc, val) => [...acc, acc[acc.length - 1] + val]), [0])
-    const octave = intervals[intervals.length - 1]
-    intervals = intervals.slice(0, intervals.length - 1);
-    const n = intervals.length;
-    return (i) => {
-      // Omg js why are you like this
-      const offset = intervals[(i % n + n) % n] + Math.floor(i / n) * octave;
-      return base * Math.pow(2, offset / 12);
-    }
-  }
-
-  const scales = {
-    pentatonic: createScale([2, 2, 3, 2, 3]),
-    major: createScale([2, 2, 1, 2, 2, 2, 1]),
-    minor: createScale([2, 1, 2, 2, 1, 2, 2]),
   };
 
   const playSequence =  async (sequence, { signal }) => {
@@ -290,7 +299,10 @@ createSynth = () => {
       if (abortController) {
         abortController.abort();
       }
-    }
+    },
+    setVolume: (volume) => {
+      output.gain.value = volume;
+    },
   }
 }
 
@@ -306,10 +318,14 @@ const refresh = () => {
     draw(path, time);
     animation = requestAnimationFrame(redraw);
   };
-  synth.play(path, config.scale, config.duration);
+  if (toggles.play) {
+    synth.play(path, config.scale, config.duration);
+  } else {
+    synth.stop();
+  }
   animation = requestAnimationFrame((currentTime) => {
     startTime = currentTime;
-    if (config.iterations > 6 || !config.animate) {
+    if (config.iterations > 6 || !toggles.animate) {
       draw(path, 1e9);
     } else {
       draw(path, time);
@@ -342,7 +358,7 @@ const fieldset = document.getElementsByTagName("fieldset")[0]
 const legend = document.getElementsByTagName("legend")[0]
 legend.addEventListener("click", () => {
   const collapsed = fieldset.style.maxHeight === "0px";
-  fieldset.style.maxHeight = collapsed ? "600px" : "0px";
+  fieldset.style.maxHeight = collapsed ? "800px" : "0px";
   legend.innerText = collapsed ? "Settings ^" : "Settings v "
 })
 
@@ -360,6 +376,15 @@ presetSelect.addEventListener("change", (e) => {
   refresh();
 });
 
+const scaleSelect = document.getElementById("scale");
+Object.keys(scales).forEach((name) => {
+  const option = document.createElement("option");
+  option.value = name;
+  option.innerHTML = name[0].toLocaleUpperCase() + name.slice(1);
+  scaleSelect.appendChild(option);
+});
+
+
 const hookUpInput = (id, transform = (x) => x) => {
   const input = document.getElementById(id);
   input.value = config[id];
@@ -375,19 +400,28 @@ hookUpInput("length", parseFloat);
 hookUpInput("falloff", parseFloat);
 hookUpInput("angle", parseFloat);
 hookUpInput("iterations", parseInt);
+hookUpInput("duration", parseFloat);
+hookUpInput("scale");
+
+const volumeSlider = document.getElementById("volume");
+volumeSlider.addEventListener("change", (e) => {
+  synth.setVolume(parseFloat(e.target.value))
+});
 
 const hookUpCheckbox = (id) => {
   const checkbox = document.getElementById(id);
-  checkbox.checked = config[id];
+  checkbox.checked = toggles[id];
   checkbox.addEventListener("change", (e) => {
-    config[id] = e.target.checked;
-    refresh();
-  });
-  presetSelect.addEventListener("change", () => {
-    checkbox.checked = config[id];
+    toggles[id] = e.target.checked;
+    if (id === "animate" || e.target.checked) {
+      refresh();
+    } else {
+      synth.stop();
+    }
   });
 };
 hookUpCheckbox("animate");
+hookUpCheckbox("play");
 
 const axiomInput = document.getElementById("axiom");
 axiomInput.value = config.axiom;
